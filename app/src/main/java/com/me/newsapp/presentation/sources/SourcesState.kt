@@ -4,5 +4,6 @@ import com.me.newsapp.domain.model.Source
 
 data class SourcesState(
     val isLoading: Boolean = false,
+    val isRefresh: Boolean = false,
     val sources: List<Source> = emptyList(),
 )

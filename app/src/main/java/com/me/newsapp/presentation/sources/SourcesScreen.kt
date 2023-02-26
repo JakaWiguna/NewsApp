@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.sp
 import androidx.paging.ExperimentalPagingApi
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.me.newsapp.domain.model.Source
 import com.me.newsapp.ui.theme.GreyLight
 import com.me.newsapp.ui.theme.TextDisabledLight
@@ -37,6 +39,7 @@ fun SourcesScreen(
     val state = viewModel.state
 
     val mContext = LocalContext.current
+
     LaunchedEffect(key1 = mContext) {
         viewModel.event.collect { event ->
             when (event) {
@@ -47,40 +50,57 @@ fun SourcesScreen(
         }
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
+    SwipeRefresh(
+        state = rememberSwipeRefreshState(isRefreshing = state.isRefresh),
+        onRefresh = viewModel::doRefresh,
     ) {
-        if (state.isLoading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                itemsIndexed(items = state.sources) { index, item ->
-                    if (index % 2 == 0) {
-                        SourcesItemEven(index = index,
-                            item = item,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(100.dp)
-                                .background(GreyLight),
-                            onClick = {
-                                onSourcesClick(item.id)
-                            })
-                    } else {
-                        SourcesItemOdd(index = index,
-                            item = item,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(100.dp)
-                                .background(GreyLight),
-                            onClick = {
-                                onSourcesClick(item.id)
-                            })
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (state.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    if (state.sources.isEmpty()) {
+                        item {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Text(
+                                    text = "Not Found",
+                                    fontSize = 18.sp,
+                                    color = TextLight,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
+                        }
                     }
-                    if (index != state.sources.size - 1) {
-                        Divider(
-                            thickness = 2.dp,
-                            color = Color.Black
-                        )
+                    itemsIndexed(items = state.sources) { index, item ->
+                        if (index % 2 == 0) {
+                            SourcesItemEven(index = index,
+                                item = item,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(100.dp)
+                                    .background(GreyLight),
+                                onClick = {
+                                    onSourcesClick(item.id)
+                                })
+                        } else {
+                            SourcesItemOdd(index = index,
+                                item = item,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(100.dp)
+                                    .background(GreyLight),
+                                onClick = {
+                                    onSourcesClick(item.id)
+                                })
+                        }
+                        if (index != state.sources.size - 1) {
+                            Divider(
+                                thickness = 2.dp,
+                                color = Color.Black
+                            )
+                        }
                     }
                 }
             }

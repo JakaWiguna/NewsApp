@@ -4,6 +4,7 @@ import com.me.newsapp.domain.model.Article
 
 data class NewsArticlesState(
     val isLoading: Boolean = false,
+    val isRefresh: Boolean = false,
 
     val articles: List<Article> = emptyList(),
     val sources: String = "",

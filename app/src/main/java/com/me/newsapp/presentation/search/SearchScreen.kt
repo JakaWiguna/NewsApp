@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Divider
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -19,12 +20,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.me.newsapp.presentation.component.DetailArticleScreen
 import com.me.newsapp.presentation.component.EndlessListHandler
 import com.me.newsapp.presentation.component.SearchBar
 import com.me.newsapp.presentation.sources.SourcesItemEven
 import com.me.newsapp.presentation.sources.SourcesItemOdd
 import com.me.newsapp.ui.theme.GreyLight
+import com.me.newsapp.ui.theme.TextLight
 
 @Composable
 fun SearchScreen(
@@ -79,6 +82,18 @@ fun SearchScreen(
                     contentPadding = PaddingValues(16.dp)
                 ) {
                     if(state.mode == ModeSearch.NEWS_ARTICLES) {
+                        if (state.articles.isEmpty()) {
+                            item {
+                                Box(modifier = Modifier.fillMaxSize()) {
+                                    Text(
+                                        text = "Not Found",
+                                        fontSize = 18.sp,
+                                        color = TextLight,
+                                        modifier = Modifier.align(Alignment.Center)
+                                    )
+                                }
+                            }
+                        }
                         items(items = state.articles, key = { it.url }) { item ->
                             DetailArticleScreen(
                                 article = item,
@@ -89,6 +104,18 @@ fun SearchScreen(
                             }
                         }
                     }else{
+                        if (state.sources.isEmpty()) {
+                            item {
+                                Box(modifier = Modifier.fillMaxSize()) {
+                                    Text(
+                                        text = "Not Found",
+                                        fontSize = 18.sp,
+                                        color = TextLight,
+                                        modifier = Modifier.align(Alignment.Center)
+                                    )
+                                }
+                            }
+                        }
                         itemsIndexed(items = state.sources) { index, item ->
                             if (index % 2 == 0) {
                                 SourcesItemEven(index = index,
@@ -115,7 +142,6 @@ fun SearchScreen(
                             }
                         }
                     }
-
                     if (state.isLoadingMore) {
                         item {
                             Box(

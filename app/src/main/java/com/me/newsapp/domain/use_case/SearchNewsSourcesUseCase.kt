@@ -10,12 +10,16 @@ class SearchNewsSourcesUseCase @Inject constructor(private val repository: NewsR
     suspend fun execute(
         q: String,
         page: Int,
-        pageSize: Int
+        pageSize: Int,
+        apiKey: String,
+        fetchFromRemote:Boolean,
     ): Flow<Resource<List<Source>>> {
         return repository.searchNewsSources(
             q = q,
             page = page,
-            pageSize = pageSize
+            pageSize = pageSize,
+            apiKey = apiKey,
+            fetchFromRemote = fetchFromRemote
         )
     }
 }

@@ -34,6 +34,10 @@ class SourcesViewModel @Inject constructor(
         doGetNewsSources(category = category)
     }
 
+    fun doRefresh() {
+        doGetNewsSources(fetchFromRemote = true, category = category)
+    }
+
     private fun doGetNewsSources(
         fetchFromRemote: Boolean = false,
         category: String,

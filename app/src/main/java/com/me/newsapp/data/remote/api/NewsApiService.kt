@@ -14,6 +14,11 @@ interface NewsApiService {
         @Query("apiKey") apiKey: String,
     ): Response<NewsSourcesResponse>
 
+    @GET("v2/top-headlines/sources")
+    suspend fun getAllSourcesNews(
+        @Query("apiKey") apiKey: String,
+    ): Response<NewsSourcesResponse>
+
     @GET("v2/everything")
     suspend fun getEverything(
         @Query("page") page: Int? = null,

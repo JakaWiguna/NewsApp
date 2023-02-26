@@ -46,6 +46,10 @@ class NewsArticlesViewModel @Inject constructor(
     }
 
     init {
+        doRefresh()
+    }
+
+    fun doRefresh() {
         state = state.copy(
             page = 1,
             pageSize = 10,

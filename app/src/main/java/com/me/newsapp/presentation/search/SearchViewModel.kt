@@ -56,8 +56,9 @@ class SearchViewModel @Inject constructor(
                         delay(2000L)
                         doSearchSources(
                             q = event.query,
-                            page =  state.page,
-                            pageSize = state.pageSize
+                            page = state.page,
+                            pageSize = state.pageSize,
+                            fetchFromRemote = true
                         )
                     }
                 }
@@ -82,6 +83,7 @@ class SearchViewModel @Inject constructor(
                         q = state.searchQuery,
                         page = state.page,
                         pageSize = state.pageSize,
+                        fetchFromRemote = false
                     )
                 }
             }
@@ -165,58 +167,59 @@ class SearchViewModel @Inject constructor(
         q: String,
         page: Int,
         pageSize: Int,
+        fetchFromRemote: Boolean,
     ) {
-        if (q.isNotBlank()) {
-            viewModelScope.launch {
-                searchNewsSourcesUseCase.execute(
-                    q = q,
-                    page = page,
-                    pageSize = pageSize,
-                ).collect { resource ->
-                    if (page == 1) {
-                        when (resource) {
-                            is Resource.Loading -> {
-                                resource.isLoading.let { isLoading ->
-                                    state = state.copy(
-                                        isLoading = isLoading
-                                    )
-                                }
-                            }
-                            is Resource.Success -> {
-                                resource.data?.let { data ->
-                                    state = state.copy(
-                                        canLoadMore = state.pageSize == data.size,
-                                        sources = data,
-                                    )
-                                }
-                            }
-                            is Resource.Error -> {
-                                resource.message?.let { message ->
-                                    _event.emit(SearchEvent.ShowToast(message))
-                                }
+        viewModelScope.launch {
+            searchNewsSourcesUseCase.execute(
+                q = q,
+                page = page,
+                pageSize = pageSize,
+                apiKey = BuildConfig.API_KEY,
+                fetchFromRemote = fetchFromRemote
+            ).collect { resource ->
+                if (page == 1) {
+                    when (resource) {
+                        is Resource.Loading -> {
+                            resource.isLoading.let { isLoading ->
+                                state = state.copy(
+                                    isLoading = isLoading
+                                )
                             }
                         }
-                    } else {
-                        when (resource) {
-                            is Resource.Loading -> {
-                                resource.isLoading.let { isLoadingMore ->
-                                    state = state.copy(
-                                        isLoadingMore = isLoadingMore
-                                    )
-                                }
+                        is Resource.Success -> {
+                            resource.data?.let { data ->
+                                state = state.copy(
+                                    canLoadMore = state.pageSize == data.size,
+                                    sources = data,
+                                )
                             }
-                            is Resource.Success -> {
-                                resource.data?.let { data ->
-                                    state = state.copy(
-                                        canLoadMore = state.pageSize == data.size,
-                                        sources = state.sources + data
-                                    )
-                                }
+                        }
+                        is Resource.Error -> {
+                            resource.message?.let { message ->
+                                _event.emit(SearchEvent.ShowToast(message))
                             }
-                            is Resource.Error -> {
-                                resource.message?.let { message ->
-                                    _event.emit(SearchEvent.ShowToast(message))
-                                }
+                        }
+                    }
+                } else {
+                    when (resource) {
+                        is Resource.Loading -> {
+                            resource.isLoading.let { isLoadingMore ->
+                                state = state.copy(
+                                    isLoadingMore = isLoadingMore
+                                )
+                            }
+                        }
+                        is Resource.Success -> {
+                            resource.data?.let { data ->
+                                state = state.copy(
+                                    canLoadMore = state.pageSize == data.size,
+                                    sources = state.sources + data
+                                )
+                            }
+                        }
+                        is Resource.Error -> {
+                            resource.message?.let { message ->
+                                _event.emit(SearchEvent.ShowToast(message))
                             }
                         }
                     }

@@ -120,20 +120,46 @@ class NewsRepositoryImpl @Inject constructor(
         q: String,
         page: Int,
         pageSize: Int,
+        apiKey: String,
+        fetchFromRemote:Boolean,
     ): Flow<Resource<List<Source>>> {
         return flow {
             emit(Resource.Loading(true))
+            val offset = pageSize * (page - 1)
+            var localData = sourceDao.getSourcesByPage(
+                offset = offset,
+                pageSize = pageSize,
+                name = q
+            )
+            if (localData.isNotEmpty()) {
+                emit(Resource.Success(data = localData.map {
+                    it.toSource()
+                }))
+            }
+            val shouldJustLoadFromCache = localData.isNotEmpty() && !fetchFromRemote
+            if (shouldJustLoadFromCache) {
+                emit(Resource.Loading(false))
+                return@flow
+            }
             try {
-                val offset = pageSize * (page - 1)
-                val localData = sourceDao.getSourcesByPage(
-                    offset = offset,
-                    pageSize = pageSize,
-                    name = q
-                )
-                if (localData.isNotEmpty()) {
-                    emit(Resource.Success(data = localData.map {
-                        it.toSource()
-                    }))
+                val response = api.getAllSourcesNews(apiKey = apiKey)
+                response.let { resp ->
+                    if (resp.isSuccessful) {
+                        val newsSourcesResponse = resp.body()!!
+                        sourceDao.deleteAll()
+                        sourceDao.insertAll(newsSourcesResponse.data.map { it.toSourceEntity() })
+                        localData = sourceDao.getSourcesByPage(
+                            offset = offset,
+                            pageSize = pageSize,
+                            name = q
+                        )
+                        emit(Resource.Success(data = localData.map { it.toSource() }))
+                    } else {
+                        val type = object : TypeToken<ErrorResponse>() {}.type
+                        val err: ErrorResponse =
+                            Gson().fromJson(response.errorBody()!!.charStream(), type)
+                        emit(Resource.Error(err.message))
+                    }
                 }
             } catch (e: HttpException) {
                 emit(Resource.Error(message = e.localizedMessage ?: "An unexpected error occurred"))

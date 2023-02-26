@@ -23,6 +23,8 @@ interface NewsRepository {
     suspend fun searchNewsSources(
         q: String,
         page: Int,
-        pageSize: Int
+        pageSize: Int,
+        apiKey: String,
+        fetchFromRemote:Boolean,
     ): Flow<Resource<List<Source>>>
 }
