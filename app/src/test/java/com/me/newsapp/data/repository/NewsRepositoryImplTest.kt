@@ -8,6 +8,7 @@ import com.me.newsapp.data.remote.dto.*
 import com.me.newsapp.domain.model.Article
 import com.me.newsapp.domain.model.ArticleSource
 import com.me.newsapp.domain.model.Source
+import com.me.newsapp.utils.Constants.ITEMS_PER_PAGE
 import com.me.newsapp.utils.Resource
 import id.tss.taskmanagement.utils.TestDispatcherProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -392,4 +393,421 @@ class NewsRepositoryImplTest {
                     }
                 }
         }
+
+    @Test
+    fun `getEverything should return error when API call is unsuccessful`() = runBlocking {
+        // given
+        val expectedErrorMessage = "Bad Request"
+        val errorResponse = ErrorResponse(code = "400", message = "Bad Request", status = "error")
+        val gson = Gson()
+        val responseBody = gson.toJson(errorResponse)
+
+        Mockito.`when`(api.getEverything(q = "FAKE_Query", apiKey = "FAKE_API_KEY"))
+            .thenReturn(Response.error(400, responseBody.toResponseBody()))
+
+        // when
+        repository.getNewsEverything(
+            q = "FAKE_Query", apiKey = "FAKE_API_KEY"
+        ).take(3).collect { resource ->
+            // then
+            when (resource) {
+                is Resource.Loading -> {
+                    assert(resource.isLoading || !resource.isLoading)
+                }
+                is Resource.Error -> {
+                    assert(resource.message == expectedErrorMessage)
+                }
+                else -> {
+                    // should not reach here
+                    assert(false)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `getEverything should emit error message with HTTPException`() = runBlocking {
+        // given
+        val errorResponse = "{\n" +
+                "  \"code\": \"400\",\n" +
+                "  \"message\": \"Bad Request\",\n" +
+                "  \"status\": \"error\"\n" +
+                "}\n"
+        val responseBody = errorResponse.toResponseBody("application/json".toMediaTypeOrNull())
+        val response = Response.error<String>(400, responseBody)
+        val httpException = HttpException(response)
+
+        Mockito.`when`(api.getEverything(q = "FAKE_Query", apiKey = "FAKE_API_KEY"))
+            .thenAnswer {
+                throw httpException
+            }
+        repository.getNewsEverything(
+            q = "FAKE_Query", apiKey = "FAKE_API_KEY"
+        ).take(3).collect { resource ->
+            // then
+            when (resource) {
+                is Resource.Loading -> {
+                    assert(resource.isLoading || !resource.isLoading)
+                }
+                is Resource.Error -> {
+                    assert(resource.message == httpException.message)
+                }
+                else -> {
+                    // should not reach here
+                    assert(false)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `getEverything should emit error message with IOException`() = runBlocking {
+        // given
+        val expectedResult = "Couldn't reach server. Check your internet connection."
+        val ioException = IOException()
+
+        // when
+        Mockito.`when`(sourceDao.getAllByCategory("FAKE_CATEGORY"))
+            .thenReturn(emptyList())
+
+        Mockito.`when`(api.getEverything(q = "FAKE_Query", apiKey = "FAKE_API_KEY"))
+            .thenAnswer {
+                throw ioException
+            }
+
+        repository.getNewsEverything(
+            q = "FAKE_Query", apiKey = "FAKE_API_KEY"
+        ).take(3).collect { resource ->
+            // then
+            when (resource) {
+                is Resource.Loading -> {
+                    assert(resource.isLoading || !resource.isLoading)
+                }
+                is Resource.Error -> {
+                    assert(resource.message == expectedResult)
+                }
+                else -> {
+                    // should not reach here
+                    assert(false)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `getEverything should emit error message with Exception`() = runBlocking {
+        // given
+        val expectedResult = "Couldn't load data"
+        val exception = Exception()
+
+        //when
+        Mockito.`when`(api.getEverything(q = "FAKE_Query", apiKey = "FAKE_API_KEY"))
+            .thenAnswer {
+                throw exception
+            }
+
+        // when
+        repository.getNewsEverything(
+            q = "FAKE_Query", apiKey = "FAKE_API_KEY"
+        ).take(3).collect { resource ->
+            // then
+            when (resource) {
+                is Resource.Loading -> {
+                    assert(resource.isLoading || !resource.isLoading)
+                }
+                is Resource.Error -> {
+                    assert(resource.message == expectedResult)
+                }
+                else -> {
+                    // should not reach here
+                    assert(false)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `searchNewsSources should return data from remote when fetchFromRemote is false and local data is not available`() =
+        runBlocking {
+            val expectedResult = listOf(
+                Source(
+                    category = "FAKE_CATEGORY",
+                    url = "FAKE_URL",
+                    country = "FAKE_COUNTRY",
+                    language = "FAKE_LANGUAGE",
+                    description = "FAKE_DESCRIPTION",
+                    name = "FAKE_NAME",
+                    id = "FAKE_ID"
+                )
+            )
+
+            val newSourceResponse = NewsSourcesResponse(
+                status = "OK",
+                data = listOf(
+                    SourceResponse(
+                        category = "FAKE_CATEGORY",
+                        url = "FAKE_URL",
+                        country = "FAKE_COUNTRY",
+                        language = "FAKE_LANGUAGE",
+                        description = "FAKE_DESCRIPTION",
+                        name = "FAKE_NAME",
+                        id = "FAKE_ID"
+                    )
+                )
+            )
+
+            val localSourceEntities = listOf(
+                SourceEntity(
+                    category = "FAKE_CATEGORY",
+                    url = "FAKE_URL",
+                    country = "FAKE_COUNTRY",
+                    language = "FAKE_LANGUAGE",
+                    description = "FAKE_DESCRIPTION",
+                    name = "FAKE_NAME",
+                    id = "FAKE_ID"
+                )
+            )
+
+            Mockito.`when`(sourceDao.getSourcesByPage(offset = 0, pageSize = ITEMS_PER_PAGE, name = "FAKE_NAME"))
+                .thenReturn(emptyList())
+
+            Mockito.`when`(api.getAllSourcesNews(apiKey = "FAKE_API"))
+                .thenReturn(Response.success(newSourceResponse))
+
+            Mockito.`when`(sourceDao.getSourcesByPage(offset = 0, pageSize = ITEMS_PER_PAGE, name = "FAKE_NAME"))
+                .thenReturn(localSourceEntities)
+
+            repository.searchNewsSources(
+                q = "FAKE_NAME",
+                page = 1,
+                pageSize = ITEMS_PER_PAGE,
+                apiKey = "FAKE_API",
+                fetchFromRemote = false
+            )
+                .take(3)
+                .collect { resource ->
+                    // then
+                    when (resource) {
+                        is Resource.Loading -> {
+                            assert(resource.isLoading || !resource.isLoading)
+                        }
+                        is Resource.Success -> {
+                            assert(resource.data == expectedResult)
+                        }
+                        else -> {
+                            // should not reach here
+                            assert(false)
+                        }
+                    }
+                }
+        }
+
+    @Test
+    fun `searchNewsSources should return data from remote when fetchFromRemote is false and local data is available`() =
+        runBlocking {
+            val expectedResult = listOf(
+                Source(
+                    category = "FAKE_CATEGORY",
+                    url = "FAKE_URL",
+                    country = "FAKE_COUNTRY",
+                    language = "FAKE_LANGUAGE",
+                    description = "FAKE_DESCRIPTION",
+                    name = "FAKE_NAME",
+                    id = "FAKE_ID"
+                )
+            )
+
+            val localSourceEntities = listOf(
+                SourceEntity(
+                    category = "FAKE_CATEGORY",
+                    url = "FAKE_URL",
+                    country = "FAKE_COUNTRY",
+                    language = "FAKE_LANGUAGE",
+                    description = "FAKE_DESCRIPTION",
+                    name = "FAKE_NAME",
+                    id = "FAKE_ID"
+                )
+            )
+
+            Mockito.`when`(sourceDao.getSourcesByPage(offset = 0, pageSize = ITEMS_PER_PAGE, name = "FAKE_NAME"))
+                .thenReturn(localSourceEntities)
+
+
+            repository.searchNewsSources(
+                q = "FAKE_NAME",
+                page = 1,
+                pageSize = ITEMS_PER_PAGE,
+                apiKey = "FAKE_API",
+                fetchFromRemote = false
+            )
+                .take(3)
+                .collect { resource ->
+                    // then
+                    when (resource) {
+                        is Resource.Loading -> {
+                            assert(resource.isLoading || !resource.isLoading)
+                        }
+                        is Resource.Success -> {
+                            assert(resource.data == expectedResult)
+                        }
+                        else -> {
+                            // should not reach here
+                            assert(false)
+                        }
+                    }
+                }
+        }
+
+    @Test
+    fun `searchNewsSources should return error when API call is unsuccessful`() = runBlocking {
+        // given
+        val expectedErrorMessage = "Bad Request"
+        val errorResponse = ErrorResponse(code = "400", message = "Bad Request", status = "error")
+        val gson = Gson()
+        val responseBody = gson.toJson(errorResponse)
+
+        Mockito.`when`(sourceDao.getSourcesByPage(offset = 0, pageSize = ITEMS_PER_PAGE, name = "FAKE_NAME"))
+            .thenReturn(emptyList())
+
+        Mockito.`when`(api.getAllSourcesNews(apiKey = "FAKE_API"))
+            .thenReturn(Response.error(400, responseBody.toResponseBody()))
+
+        // when
+        repository.searchNewsSources(
+            q = "FAKE_NAME",
+            page = 1,
+            pageSize = ITEMS_PER_PAGE,
+            apiKey = "FAKE_API",
+            fetchFromRemote = true
+        ).take(3).collect { resource ->
+            // then
+            when (resource) {
+                is Resource.Loading -> {
+                    assert(resource.isLoading || !resource.isLoading)
+                }
+                is Resource.Error -> {
+                    assert(resource.message == expectedErrorMessage)
+                }
+                else -> {
+                    // should not reach here
+                    assert(false)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `searchNewsSources should emit error message with HTTPException`() = runBlocking {
+        // given
+        val errorResponse = "{\n" +
+                "  \"code\": \"400\",\n" +
+                "  \"message\": \"Bad Request\",\n" +
+                "  \"status\": \"error\"\n" +
+                "}\n"
+        val responseBody = errorResponse.toResponseBody("application/json".toMediaTypeOrNull())
+        val response = Response.error<String>(400, responseBody)
+        val httpException = HttpException(response)
+
+        Mockito.`when`(sourceDao.getSourcesByPage(offset = 0, pageSize = ITEMS_PER_PAGE, name = "FAKE_NAME"))
+            .thenReturn(emptyList())
+
+        Mockito.`when`(api.getAllSourcesNews(apiKey = "FAKE_API"))
+            .thenAnswer {
+                throw httpException
+            }
+
+        repository.searchNewsSources(
+            q = "FAKE_NAME",
+            page = 1,
+            pageSize = ITEMS_PER_PAGE,
+            apiKey = "FAKE_API",
+            fetchFromRemote = true
+        ).take(3).collect { resource ->
+            // then
+            when (resource) {
+                is Resource.Loading -> {
+                    assert(resource.isLoading || !resource.isLoading)
+                }
+                is Resource.Error -> {
+                    assert(resource.message == httpException.message)
+                }
+                else -> {
+                    // should not reach here
+                    assert(false)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `searchNewsSources should emit error message with IOException`() = runBlocking {
+        // given
+        val expectedResult = "Couldn't reach server. Check your internet connection."
+        val ioException = IOException()
+
+        Mockito.`when`(sourceDao.getSourcesByPage(offset = 0, pageSize = ITEMS_PER_PAGE, name = "FAKE_NAME"))
+            .thenReturn(emptyList())
+
+        Mockito.`when`(api.getAllSourcesNews(apiKey = "FAKE_API"))
+            .thenAnswer {
+                throw ioException
+            }
+
+        repository.searchNewsSources(
+            q = "FAKE_NAME",
+            page = 1,
+            pageSize = ITEMS_PER_PAGE,
+            apiKey = "FAKE_API",
+            fetchFromRemote = true
+        ).take(3).collect { resource ->
+            // then
+            when (resource) {
+                is Resource.Loading -> {
+                    assert(resource.isLoading || !resource.isLoading)
+                }
+                is Resource.Error -> {
+                    assert(resource.message == expectedResult)
+                }
+                else -> {
+                    // should not reach here
+                    assert(false)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `searchNewsSources should emit error message with Exception`() = runBlocking {
+        // given
+        val expectedResult = "Couldn't load data"
+        val exception = Exception()
+
+
+        Mockito.`when`(sourceDao.getSourcesByPage(offset = 0, pageSize = ITEMS_PER_PAGE, name = "FAKE_NAME"))
+            .thenReturn(emptyList())
+
+        Mockito.`when`(api.getAllSourcesNews(apiKey = "FAKE_API"))
+            .thenAnswer {
+                throw exception
+            }
+
+        // when
+        repository.getNewsEverything(
+            q = "FAKE_Query", apiKey = "FAKE_API_KEY"
+        ).take(3).collect { resource ->
+            // then
+            when (resource) {
+                is Resource.Loading -> {
+                    assert(resource.isLoading || !resource.isLoading)
+                }
+                is Resource.Error -> {
+                    assert(resource.message == expectedResult)
+                }
+                else -> {
+                    // should not reach here
+                    assert(false)
+                }
+            }
+        }
+    }
 }
