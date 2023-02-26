@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.NewsApp.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/not_quite_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_newspaper</item>
+        <item name="windowSplashScreenAnimationDuration">800</item>
+        <item name="postSplashScreenTheme">@style/Theme.NewsApp</item>
+    </style>
+</resources>
