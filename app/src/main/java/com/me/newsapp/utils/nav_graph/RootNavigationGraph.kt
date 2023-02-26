@@ -12,11 +12,11 @@ import androidx.navigation.navArgument
 import androidx.paging.ExperimentalPagingApi
 import com.google.accompanist.navigation.animation.AnimatedNavHost
 import com.google.accompanist.navigation.animation.composable
-import com.me.newsapp.presentation.web_article.WebArticleScreen
 import com.me.newsapp.presentation.home.HomeScreen
 import com.me.newsapp.presentation.news_articles.NewsArticlesScreen
 import com.me.newsapp.presentation.search.SearchScreen
 import com.me.newsapp.presentation.sources.SourcesScreen
+import com.me.newsapp.presentation.web_article.WebArticleScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -96,6 +96,11 @@ fun RootNavigationGraph(
             SearchScreen(onNewsArticleClick = { url ->
                 val encodedUrl = URLEncoder.encode(url, StandardCharsets.UTF_8.toString())
                 navController.navigate(Graph.WEB_NEWS_ARTICLES + "/$encodedUrl") {
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }, onSourcesClick = { sources ->
+                navController.navigate(Graph.NEWS_ARTICLES + "/$sources") {
                     launchSingleTop = true
                     restoreState = true
                 }

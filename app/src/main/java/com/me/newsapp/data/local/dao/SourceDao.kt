@@ -1,6 +1,5 @@
 package com.me.newsapp.data.local.dao
 
-import androidx.paging.PagingSource
 import androidx.room.*
 import com.me.newsapp.data.local.entity.SourceEntity
 
@@ -8,17 +7,15 @@ import com.me.newsapp.data.local.entity.SourceEntity
 interface SourceDao {
 
     @Transaction
-    @Query("SELECT * FROM SourceEntity")
-    fun getAll(): PagingSource<Int, SourceEntity>
+    @Query("SELECT * FROM SourceEntity WHERE name LIKE '%' || :name || '%' LIMIT :pageSize OFFSET :offset")
+    fun getSourcesByPage(pageSize: Int, offset: Int, name: String): List<SourceEntity>
 
     @Transaction
     @Query("SELECT * FROM SourceEntity WHERE category = :category")
     fun getAllByCategory(category: String): List<SourceEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(
-        sources: List<SourceEntity>,
-    )
+    suspend fun insertAll(sources: List<SourceEntity>)
 
     @Query("DELETE FROM SourceEntity")
     suspend fun deleteAll()

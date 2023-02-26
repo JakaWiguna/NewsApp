@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.me.newsapp.BuildConfig
 import com.me.newsapp.domain.use_case.GetNewsEverythingUseCase
+import com.me.newsapp.domain.use_case.SearchNewsSourcesUseCase
 import com.me.newsapp.utils.Constants.ITEMS_PER_PAGE
 import com.me.newsapp.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,6 +21,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val getNewsEverythingUseCase: GetNewsEverythingUseCase,
+    private val searchNewsSourcesUseCase: SearchNewsSourcesUseCase,
 ) : ViewModel() {
 
     var state by mutableStateOf(SearchState())
@@ -37,6 +39,8 @@ class SearchViewModel @Inject constructor(
                     searchQuery = event.query,
                     page = 1,
                     pageSize = ITEMS_PER_PAGE,
+                    articles = emptyList(),
+                    sources = emptyList(),
                 )
                 if (state.mode == ModeSearch.NEWS_ARTICLES) {
                     searchJob = viewModelScope.launch {
@@ -47,12 +51,12 @@ class SearchViewModel @Inject constructor(
                             pageSize = state.pageSize
                         )
                     }
-                }else{
+                } else {
                     searchJob = viewModelScope.launch {
                         delay(2000L)
-                        doGetNewsEverythingWithLoadMore(
-                            sources = event.query,
-                            page = state.page,
+                        doSearchSources(
+                            q = event.query,
+                            page =  state.page,
                             pageSize = state.pageSize
                         )
                     }
@@ -74,8 +78,8 @@ class SearchViewModel @Inject constructor(
                         page = state.page.plus(1),
                         pageSize = ITEMS_PER_PAGE,
                     )
-                    doGetNewsEverythingWithLoadMore(
-                        sources = state.searchQuery,
+                    doSearchSources(
+                        q = state.searchQuery,
                         page = state.page,
                         pageSize = state.pageSize,
                     )
@@ -142,6 +146,70 @@ class SearchViewModel @Inject constructor(
                                     state = state.copy(
                                         canLoadMore = state.pageSize == data.size,
                                         articles = state.articles + data
+                                    )
+                                }
+                            }
+                            is Resource.Error -> {
+                                resource.message?.let { message ->
+                                    _event.emit(SearchEvent.ShowToast(message))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun doSearchSources(
+        q: String,
+        page: Int,
+        pageSize: Int,
+    ) {
+        if (q.isNotBlank()) {
+            viewModelScope.launch {
+                searchNewsSourcesUseCase.execute(
+                    q = q,
+                    page = page,
+                    pageSize = pageSize,
+                ).collect { resource ->
+                    if (page == 1) {
+                        when (resource) {
+                            is Resource.Loading -> {
+                                resource.isLoading.let { isLoading ->
+                                    state = state.copy(
+                                        isLoading = isLoading
+                                    )
+                                }
+                            }
+                            is Resource.Success -> {
+                                resource.data?.let { data ->
+                                    state = state.copy(
+                                        canLoadMore = state.pageSize == data.size,
+                                        sources = data,
+                                    )
+                                }
+                            }
+                            is Resource.Error -> {
+                                resource.message?.let { message ->
+                                    _event.emit(SearchEvent.ShowToast(message))
+                                }
+                            }
+                        }
+                    } else {
+                        when (resource) {
+                            is Resource.Loading -> {
+                                resource.isLoading.let { isLoadingMore ->
+                                    state = state.copy(
+                                        isLoadingMore = isLoadingMore
+                                    )
+                                }
+                            }
+                            is Resource.Success -> {
+                                resource.data?.let { data ->
+                                    state = state.copy(
+                                        canLoadMore = state.pageSize == data.size,
+                                        sources = state.sources + data
                                     )
                                 }
                             }

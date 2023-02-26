@@ -116,4 +116,33 @@ class NewsRepositoryImpl @Inject constructor(
         }.flowOn(dispatcherProvider.io)
     }
 
+    override suspend fun searchNewsSources(
+        q: String,
+        page: Int,
+        pageSize: Int,
+    ): Flow<Resource<List<Source>>> {
+        return flow {
+            emit(Resource.Loading(true))
+            try {
+                val offset = pageSize * (page - 1)
+                val localData = sourceDao.getSourcesByPage(
+                    offset = offset,
+                    pageSize = pageSize,
+                    name = q
+                )
+                if (localData.isNotEmpty()) {
+                    emit(Resource.Success(data = localData.map {
+                        it.toSource()
+                    }))
+                }
+            } catch (e: HttpException) {
+                emit(Resource.Error(message = e.localizedMessage ?: "An unexpected error occurred"))
+            } catch (e: IOException) {
+                emit(Resource.Error(message = "Couldn't reach server. Check your internet connection."))
+            } catch (e: Exception) {
+                emit(Resource.Error(message = "Couldn't load data"))
+            }
+            emit(Resource.Loading(false))
+        }.flowOn(dispatcherProvider.io)
+    }
 }

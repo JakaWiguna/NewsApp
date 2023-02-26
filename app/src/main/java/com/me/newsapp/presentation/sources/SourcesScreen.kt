@@ -56,13 +56,25 @@ fun SourcesScreen(
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 itemsIndexed(items = state.sources) { index, item ->
                     if (index % 2 == 0) {
-                        SourcesItemEven(index = index, item = item) {
-                            onSourcesClick(item.id)
-                        }
+                        SourcesItemEven(index = index,
+                            item = item,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp)
+                                .background(GreyLight),
+                            onClick = {
+                                onSourcesClick(item.id)
+                            })
                     } else {
-                        SourcesItemOdd(index = index, item = item) {
-                            onSourcesClick(item.id)
-                        }
+                        SourcesItemOdd(index = index,
+                            item = item,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp)
+                                .background(GreyLight),
+                            onClick = {
+                                onSourcesClick(item.id)
+                            })
                     }
                     if (index != state.sources.size - 1) {
                         Divider(
@@ -81,12 +93,10 @@ fun SourcesItemOdd(
     index: Int,
     item: Source,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(100.dp)
-            .background(GreyLight)
+        modifier = modifier
             .clickable { onClick() }
     ) {
         AsyncImage(
@@ -144,12 +154,10 @@ fun SourcesItemEven(
     index: Int,
     item: Source,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(100.dp)
-            .background(GreyLight)
+        modifier = modifier
             .clickable { onClick() }
     ) {
         Column(

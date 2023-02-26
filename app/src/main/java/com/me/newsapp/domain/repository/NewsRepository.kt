@@ -19,4 +19,10 @@ interface NewsRepository {
         sources: String? = null,
         apiKey: String,
     ): Flow<Resource<List<Article>>>
+
+    suspend fun searchNewsSources(
+        q: String,
+        page: Int,
+        pageSize: Int
+    ): Flow<Resource<List<Source>>>
 }
